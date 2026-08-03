@@ -1,18 +1,22 @@
 import { useState, useEffect, useRef } from "react";
 import { Radio, Mic2, UserRound, Play, Loader2, Circle } from "lucide-react";
+import female1 from "./assets/avatars/female1.jpg";
+import female2 from "./assets/avatars/female2.jpg";
+import male1 from "./assets/avatars/male1.jpg";
+import male2 from "./assets/avatars/male2.jpg";
 
 const VOICES = [
-  { id: "amara", name: "name1", tag: "Warm · Female", freq: [0.4, 0.7, 0.5, 0.9, 0.6, 0.3] },
-  { id: "dawood", name: "name2", tag: "Deep · Male", freq: [0.6, 0.4, 0.8, 0.5, 0.7, 0.4] },
-  { id: "sana", name: "name3", tag: "Crisp · Female", freq: [0.3, 0.8, 0.4, 0.6, 0.9, 0.5] },
-  { id: "hamza", name: "name4", tag: "Steady · Male", freq: [0.5, 0.5, 0.7, 0.4, 0.5, 0.8] },
+  { id: "amara", name: "Amara", tag: "Warm · Female", freq: [0.4, 0.7, 0.5, 0.9, 0.6, 0.3] },
+  { id: "dawood", name: "Dawood", tag: "Deep · Male", freq: [0.6, 0.4, 0.8, 0.5, 0.7, 0.4] },
+  { id: "sana", name: "Sana", tag: "Crisp · Female", freq: [0.3, 0.8, 0.4, 0.6, 0.9, 0.5] },
+  { id: "hamza", name: "Hamza", tag: "Steady · Male", freq: [0.5, 0.5, 0.7, 0.4, 0.5, 0.8] },
 ];
 
 const AVATARS = [
-  { id: "a1", label: "Anchor 01", hue: "#E63946" },
-  { id: "a2", label: "Anchor 02", hue: "#F2B705" },
-  { id: "a3", label: "Anchor 03", hue: "#2EC4B6" },
-  { id: "a4", label: "Anchor 04", hue: "#8E7DFF" },
+  { id: "a1", label: "Female 01", hue: "#E63946", img: female1 },
+  { id: "a2", label: "Female 02", hue: "#F2B705", img: female2 },
+  { id: "a3", label: "Male 01", hue: "#2EC4B6", img: male1 },
+  { id: "a4", label: "Male 02", hue: "#8E7DFF", img: male2 },
 ];
 
 const STAGES = ["SCRIPT", "VOICE", "AVATAR", "RENDER"];
@@ -189,15 +193,14 @@ export default function App() {
                     className="flex flex-col items-center gap-1.5 group"
                   >
                     <div
-                      className="w-full aspect-square rounded-md flex items-center justify-center border-2 transition"
-                      style={{
-                        borderColor: active ? a.hue : "#262C38",
-                        backgroundColor: active ? `${a.hue}22` : "#151920",
-                      }}
+                      className="w-full aspect-square rounded-md overflow-hidden border-2 transition"
+                      style={{ borderColor: active ? a.hue : "#262C38" }}
                     >
-                      <UserRound
-                        size={20}
-                        style={{ color: active ? a.hue : "#4A5160" }}
+                      <img
+                        src={a.img}
+                        alt={a.label}
+                        className="w-full h-full object-cover"
+                        style={{ opacity: active ? 1 : 0.55 }}
                       />
                     </div>
                     <span
@@ -251,10 +254,14 @@ export default function App() {
                 {generating && (
                   <div className="flex flex-col items-center gap-3">
                     <div
-                      className="w-16 h-16 rounded-full flex items-center justify-center animate-pulse"
-                      style={{ backgroundColor: `${selectedAvatar.hue}33` }}
+                      className="w-20 h-20 rounded-full overflow-hidden border-2 animate-pulse"
+                      style={{ borderColor: selectedAvatar.hue }}
                     >
-                      <UserRound size={30} style={{ color: selectedAvatar.hue }} />
+                      <img
+                        src={selectedAvatar.img}
+                        alt=""
+                        className="w-full h-full object-cover"
+                      />
                     </div>
                     <span className="font-mono text-[10px] tracking-widest text-[#6B7280]">
                       {STAGES[stageIdx]}…
@@ -264,10 +271,14 @@ export default function App() {
                 {done && (
                   <div className="flex flex-col items-center gap-2">
                     <div
-                      className="w-16 h-16 rounded-full flex items-center justify-center"
-                      style={{ backgroundColor: `${selectedAvatar.hue}33` }}
+                      className="w-20 h-20 rounded-full overflow-hidden border-2"
+                      style={{ borderColor: selectedAvatar.hue }}
                     >
-                      <Play size={22} fill={selectedAvatar.hue} style={{ color: selectedAvatar.hue }} />
+                      <img
+                        src={selectedAvatar.img}
+                        alt=""
+                        className="w-full h-full object-cover"
+                      />
                     </div>
                     <span className="font-mono text-[10px] tracking-widest text-[#8B93A1]">
                       BULLETIN READY
