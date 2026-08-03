@@ -2,10 +2,10 @@ import { useState, useEffect, useRef } from "react";
 import { Radio, Mic2, UserRound, Play, Loader2, Circle } from "lucide-react";
 
 const VOICES = [
-  { id: "amara", name: "Amara", tag: "Warm · Female", freq: [0.4, 0.7, 0.5, 0.9, 0.6, 0.3] },
-  { id: "dawood", name: "Dawood", tag: "Deep · Male", freq: [0.6, 0.4, 0.8, 0.5, 0.7, 0.4] },
-  { id: "sana", name: "Sana", tag: "Crisp · Female", freq: [0.3, 0.8, 0.4, 0.6, 0.9, 0.5] },
-  { id: "hamza", name: "Hamza", tag: "Steady · Male", freq: [0.5, 0.5, 0.7, 0.4, 0.5, 0.8] },
+  { id: "amara", name: "name1", tag: "Warm · Female", freq: [0.4, 0.7, 0.5, 0.9, 0.6, 0.3] },
+  { id: "dawood", name: "name2", tag: "Deep · Male", freq: [0.6, 0.4, 0.8, 0.5, 0.7, 0.4] },
+  { id: "sana", name: "name3", tag: "Crisp · Female", freq: [0.3, 0.8, 0.4, 0.6, 0.9, 0.5] },
+  { id: "hamza", name: "name4", tag: "Steady · Male", freq: [0.5, 0.5, 0.7, 0.4, 0.5, 0.8] },
 ];
 
 const AVATARS = [
