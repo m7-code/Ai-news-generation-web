@@ -336,36 +336,44 @@ export default function App() {
                   </div>
                 )}
                 {generating && (
-                  <div className="relative flex flex-col items-center gap-3">
-                    <div
-                      className="w-20 h-20 rounded-full overflow-hidden border-2 animate-pulse"
-                      style={{ borderColor: selectedAvatar.hue }}
-                    >
-                      <img
-                        src={selectedAvatar.img}
-                        alt=""
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <span className="font-mono text-[10px] tracking-widest text-[#E8EAED] bg-black/50 px-2 py-0.5 rounded">
+                  <div
+                    className="absolute overflow-hidden rounded-sm border-2 animate-pulse"
+                    style={{
+                      right: "0%",
+                      top: "0%",
+                      width: "16%",
+                      height: "85%",
+                      borderColor: selectedAvatar.hue,
+                    }}
+                  >
+                    <img
+                      src={selectedAvatar.img}
+                      alt=""
+                      className="w-full h-full object-cover"
+                    />
+                    <span className="absolute bottom-1 left-0 right-0 text-center font-mono text-[8px] tracking-widest text-[#E8EAED] bg-black/60 py-0.5">
                       {STAGES[stageIdx]}…
                     </span>
                   </div>
                 )}
                 {done && (
-                  <div className="relative flex flex-col items-center gap-2">
-                    <div
-                      className="w-20 h-20 rounded-full overflow-hidden border-2"
-                      style={{ borderColor: selectedAvatar.hue }}
-                    >
-                      <img
-                        src={selectedAvatar.img}
-                        alt=""
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <span className="font-mono text-[10px] tracking-widest text-[#E8EAED] bg-black/50 px-2 py-0.5 rounded">
-                      BULLETIN READY
+                  <div
+                    className="absolute overflow-hidden rounded-sm border-2"
+                    style={{
+                      right: "0%",
+                      top: "0%",
+                      width: "16%",
+                      height: "85%",
+                      borderColor: selectedAvatar.hue,
+                    }}
+                  >
+                    <img
+                      src={selectedAvatar.img}
+                      alt=""
+                      className="w-full h-full object-cover"
+                    />
+                    <span className="absolute bottom-1 left-0 right-0 text-center font-mono text-[8px] tracking-widest text-[#E8EAED] bg-black/60 py-0.5">
+                      READY
                     </span>
                   </div>
                 )}
