@@ -341,8 +341,8 @@ export default function App() {
                     style={{
                       right: "0%",
                       top: "0%",
-                      width: "16%",
-                      height: "85%",
+                      width: "35%",
+                      height: "86.5%",
                       borderColor: selectedAvatar.hue,
                     }}
                   >
@@ -362,8 +362,8 @@ export default function App() {
                     style={{
                       right: "0%",
                       top: "0%",
-                      width: "16%",
-                      height: "85%",
+                      width: "35%",
+                      height: "86.5%",
                       borderColor: selectedAvatar.hue,
                     }}
                   >
