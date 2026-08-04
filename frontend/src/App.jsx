@@ -61,6 +61,7 @@ export default function App() {
   const [done, setDone] = useState(false);
   const [clock, setClock] = useState(new Date());
   const [audioUrl, setAudioUrl] = useState(null);
+  const [talkingVideoUrl, setTalkingVideoUrl] = useState(null);
   const timerRef = useRef(null);
 
   useEffect(() => {
@@ -74,29 +75,34 @@ export default function App() {
     if (!canGenerate) return;
     setDone(false);
     setAudioUrl(null);
+    setTalkingVideoUrl(null);
     setGenerating(true);
-    setStageIdx(1); // VOICE stage
+    setStageIdx(1); // VOICE
 
     try {
-      const res = await fetch(`${API_BASE}/generate-voice`, {
+      const voiceRes = await fetch(`${API_BASE}/generate-voice`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ script, voice_id: voice }),
       });
-      if (!res.ok) throw new Error(`Server responded ${res.status}`);
-      const data = await res.json();
-      setAudioUrl(`${API_BASE}${data.audio_url}`);
+      if (!voiceRes.ok) throw new Error(`Voice failed: ${voiceRes.status}`);
+      const voiceData = await voiceRes.json();
+      setAudioUrl(`${API_BASE}${voiceData.audio_url}`);
 
-      // AVATAR + RENDER stages are simulated until those backend endpoints exist
-      setStageIdx(2);
-      setTimeout(() => {
-        setStageIdx(3);
-        setTimeout(() => {
-          setGenerating(false);
-          setDone(true);
-          setStageIdx(-1);
-        }, 900);
-      }, 900);
+      setStageIdx(2); // AVATAR — this can take 30-60s+ on D-ID
+      const avatarRes = await fetch(`${API_BASE}/generate-avatar-video`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ avatar_id: avatar, audio_filename: voiceData.filename }),
+      });
+      if (!avatarRes.ok) throw new Error(`Avatar failed: ${avatarRes.status}`);
+      const avatarData = await avatarRes.json();
+      setTalkingVideoUrl(avatarData.video_url);
+
+      setStageIdx(3); // RENDER
+      setGenerating(false);
+      setDone(true);
+      setStageIdx(-1);
     } catch (err) {
       console.error("Generation failed:", err);
       setGenerating(false);
@@ -367,13 +373,23 @@ export default function App() {
                       borderColor: selectedAvatar.hue,
                     }}
                   >
-                    <img
-                      src={selectedAvatar.img}
-                      alt=""
-                      className="w-full h-full object-cover"
-                    />
-                    <span className="absolute bottom-1 left-0 right-0 text-center font-mono text-[8px] tracking-widest text-[#E8EAED] bg-black/60 py-0.5">
-                      READY
+                    {talkingVideoUrl ? (
+                      <video
+                        src={talkingVideoUrl}
+                        className="w-full h-full object-cover"
+                        autoPlay
+                        controls
+                        playsInline
+                      />
+                    ) : (
+                      <img
+                        src={selectedAvatar.img}
+                        alt=""
+                        className="w-full h-full object-cover"
+                      />
+                    )}
+                    <span className="absolute bottom-1 left-0 right-0 text-center font-mono text-[8px] tracking-widest text-[#E8EAED] bg-black/60 py-0.5 pointer-events-none">
+                      {talkingVideoUrl ? "LIVE ANCHOR" : "READY"}
                     </span>
                   </div>
                 )}
@@ -382,7 +398,7 @@ export default function App() {
                 {showAnchor && (
                   <div
                     className="absolute left-0 right-0 bg-gradient-to-t from-black/90 to-transparent px-4 pt-6 pb-3 transition-all"
-                    style={{ bottom: done && audioUrl ? "44px" : "0px" }}
+                    style={{ bottom: done && audioUrl && !talkingVideoUrl ? "44px" : "0px" }}
                   >
                     <div className="font-mono text-[9px] tracking-widest text-[#F2B705] mb-0.5">
                       {done ? "READY" : "PROCESSING"}
@@ -393,8 +409,8 @@ export default function App() {
                   </div>
                 )}
 
-                {/* Bottom audio player bar — sits like a real video player control strip */}
-                {done && audioUrl && (
+                {/* Bottom audio player bar — only shown as a fallback if the talking video hasn't loaded */}
+                {done && audioUrl && !talkingVideoUrl && (
                   <div className="absolute bottom-0 left-0 right-0 bg-[#0A0C10] border-t border-white/10 px-3 py-2">
                     <audio
                       controls
