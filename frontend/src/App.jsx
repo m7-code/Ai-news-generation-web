@@ -1,9 +1,13 @@
 import { useState, useEffect, useRef } from "react";
-import { Radio, Mic2, UserRound, Play, Loader2, Circle } from "lucide-react";
+import { Radio, Mic2, UserRound, Play, Loader2, Circle, Film } from "lucide-react";
 import female1 from "./assets/avatars/female1.jpg";
 import female2 from "./assets/avatars/female2.jpg";
 import male1 from "./assets/avatars/male1.jpg";
 import male2 from "./assets/avatars/male2.jpg";
+import video1 from "./assets/videos/video1.mp4";
+import video2 from "./assets/videos/video2.mp4";
+import video3 from "./assets/videos/video3.mp4";
+import video4 from "./assets/videos/video4.mp4";
 
 const VOICES = [
   { id: "en-US-AriaNeural", name: "Aria", tag: "English (US) · Female", freq: [0.4, 0.7, 0.5, 0.9, 0.6, 0.3] },
@@ -19,7 +23,15 @@ const AVATARS = [
   { id: "a4", label: "Male 02", hue: "#8E7DFF", img: male2 },
 ];
 
+const VIDEOS = [
+  { id: "v1", label: "Studio 01", src: video1 },
+  { id: "v2", label: "Studio 02", src: video2 },
+  { id: "v3", label: "Studio 03", src: video3 },
+  { id: "v4", label: "Studio 04", src: video4 },
+];
+
 const STAGES = ["SCRIPT", "VOICE", "AVATAR", "RENDER"];
+const API_BASE = "http://localhost:8000";
 
 function Waveform({ freq, active }) {
   return (
@@ -41,12 +53,14 @@ function Waveform({ freq, active }) {
 
 export default function App() {
   const [script, setScript] = useState("");
-  const [voice, setVoice] = useState("amara");
+  const [voice, setVoice] = useState("en-US-AriaNeural");
   const [avatar, setAvatar] = useState("a1");
+  const [bgVideo, setBgVideo] = useState("v1");
   const [generating, setGenerating] = useState(false);
   const [stageIdx, setStageIdx] = useState(-1);
   const [done, setDone] = useState(false);
   const [clock, setClock] = useState(new Date());
+  const [audioUrl, setAudioUrl] = useState(null);
   const timerRef = useRef(null);
 
   useEffect(() => {
@@ -54,61 +68,46 @@ export default function App() {
     return () => clearInterval(t);
   }, []);
 
-  useEffect(() => {
-    if (!generating) return;
-    setStageIdx(0);
-    let i = 0;
-    timerRef.current = setInterval(() => {
-      i += 1;
-      if (i >= STAGES.length) {
-        clearInterval(timerRef.current);
-        setGenerating(false);
-        setDone(true);
-        setStageIdx(-1);
-      } else {
-        setStageIdx(i);
-      }
-    }, 1100);
-    return () => clearInterval(timerRef.current);
-  }, [generating]);
-
   const canGenerate = script.trim().length > 0 && !generating;
 
-// const [voice, setVoice] = useState("en-US-AriaNeural");
-const [audioUrl, setAudioUrl] = useState(null);
+  const handleGenerate = async () => {
+    if (!canGenerate) return;
+    setDone(false);
+    setAudioUrl(null);
+    setGenerating(true);
+    setStageIdx(1); // VOICE stage
 
-// Voices load karo jab app open ho
-useEffect(() => {
-  fetch("http://localhost:8000/voices")
-    .then((res) => res.json())
-    .then((data) => setVoices(data.voices))
-    .catch((err) => console.error("Voice list fetch failed:", err));
-}, []);
+    try {
+      const res = await fetch(`${API_BASE}/generate-voice`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ script, voice_id: voice }),
+      });
+      if (!res.ok) throw new Error(`Server responded ${res.status}`);
+      const data = await res.json();
+      setAudioUrl(`${API_BASE}${data.audio_url}`);
 
-const handleGenerate = async () => {
-  if (!canGenerate) return;
-  setDone(false);
-  setGenerating(true);
-  setStageIdx(1); // VOICE stage
-
-  try {
-    const res = await fetch("http://localhost:8000/generate-voice", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ script, voice_id: voice }),
-    });
-    const data = await res.json();
-    setAudioUrl(`http://localhost:8000${data.audio_url}`);
-    setGenerating(false);
-    setDone(true);
-  } catch (err) {
-    console.error("Generation failed:", err);
-    setGenerating(false);
-  }
-};
+      // AVATAR + RENDER stages are simulated until those backend endpoints exist
+      setStageIdx(2);
+      setTimeout(() => {
+        setStageIdx(3);
+        setTimeout(() => {
+          setGenerating(false);
+          setDone(true);
+          setStageIdx(-1);
+        }, 900);
+      }, 900);
+    } catch (err) {
+      console.error("Generation failed:", err);
+      setGenerating(false);
+      setStageIdx(-1);
+    }
+  };
 
   const timeStr = clock.toLocaleTimeString("en-GB", { hour12: false });
   const selectedAvatar = AVATARS.find((a) => a.id === avatar);
+  const selectedVideo = VIDEOS.find((v) => v.id === bgVideo);
+  const showAnchor = generating || done;
 
   return (
     <div className="min-h-screen w-full bg-[#0C0F14] text-[#E8EAED] font-sans">
@@ -150,7 +149,7 @@ const handleGenerate = async () => {
 
       <main className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-0">
         {/* Control desk */}
-        <div className="border-r border-[#1E232C] px-6 py-6 flex flex-col gap-7">
+        <div className="border-r border-[#1E232C] px-6 py-6 flex flex-col gap-7 overflow-y-auto">
           {/* Script */}
           <div>
             <div className="flex items-center justify-between mb-2">
@@ -242,6 +241,50 @@ const handleGenerate = async () => {
             </div>
           </div>
 
+          {/* Background Video */}
+          <div>
+            <label className="font-mono text-[11px] tracking-widest text-[#8B93A1] mb-2 block">
+              04 · BACKGROUND
+            </label>
+            <div className="grid grid-cols-4 gap-2.5">
+              {VIDEOS.map((v) => {
+                const active = bgVideo === v.id;
+                return (
+                  <button
+                    key={v.id}
+                    onClick={() => setBgVideo(v.id)}
+                    className="flex flex-col items-center gap-1.5 group"
+                  >
+                    <div
+                      className="w-full aspect-square rounded-md overflow-hidden border-2 transition relative bg-[#151920]"
+                      style={{ borderColor: active ? "#F2B705" : "#262C38" }}
+                    >
+                      <video
+                        src={v.src}
+                        className="w-full h-full object-cover"
+                        style={{ opacity: active ? 1 : 0.55 }}
+                        muted
+                        loop
+                        playsInline
+                        autoPlay
+                      />
+                      <Film
+                        size={12}
+                        className="absolute top-1 right-1 text-white/70"
+                      />
+                    </div>
+                    <span
+                      className="font-mono text-[9px] tracking-wide"
+                      style={{ color: active ? "#F2B705" : "#4A5160" }}
+                    >
+                      {v.label.split(" ")[1]}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           {/* Generate button */}
           <button
             onClick={handleGenerate}
@@ -270,8 +313,22 @@ const handleGenerate = async () => {
             {/* TV bezel */}
             <div className="rounded-xl border border-[#1E232C] bg-[#0F1218] p-3 shadow-2xl">
               <div className="rounded-md bg-black aspect-video relative overflow-hidden flex items-center justify-center">
-                {!generating && !done && (
-                  <div className="flex flex-col items-center gap-2 text-[#2A2F38]">
+                {/* Background video — always mounted, visible once anchor is showing */}
+                <video
+                  key={selectedVideo.id}
+                  src={selectedVideo.src}
+                  className="absolute inset-0 w-full h-full object-cover transition-opacity duration-500"
+                  style={{ opacity: showAnchor ? 1 : 0.15 }}
+                  muted
+                  loop
+                  playsInline
+                  autoPlay
+                />
+                <div className="absolute inset-0 bg-black/35" />
+
+                {/* Foreground states, layered above the video */}
+                {!showAnchor && (
+                  <div className="relative flex flex-col items-center gap-2 text-[#2A2F38]">
                     <UserRound size={56} strokeWidth={1} />
                     <span className="font-mono text-[10px] tracking-widest">
                       NO SIGNAL
@@ -279,7 +336,7 @@ const handleGenerate = async () => {
                   </div>
                 )}
                 {generating && (
-                  <div className="flex flex-col items-center gap-3">
+                  <div className="relative flex flex-col items-center gap-3">
                     <div
                       className="w-20 h-20 rounded-full overflow-hidden border-2 animate-pulse"
                       style={{ borderColor: selectedAvatar.hue }}
@@ -290,40 +347,54 @@ const handleGenerate = async () => {
                         className="w-full h-full object-cover"
                       />
                     </div>
-                    <span className="font-mono text-[10px] tracking-widest text-[#6B7280]">
+                    <span className="font-mono text-[10px] tracking-widest text-[#E8EAED] bg-black/50 px-2 py-0.5 rounded">
                       {STAGES[stageIdx]}…
                     </span>
                   </div>
                 )}
                 {done && (
-  <div className="flex flex-col items-center gap-2">
-    <div
-      className="w-20 h-20 rounded-full overflow-hidden border-2"
-      style={{ borderColor: selectedAvatar.hue }}
-    >
-      <img
-        src={selectedAvatar.img}
-        alt=""
-        className="w-full h-full object-cover"
-      />
-    </div>
-    <span className="font-mono text-[10px] tracking-widest text-[#8B93A1]">
-      BULLETIN READY
-    </span>
-    {audioUrl && (
-      <audio controls autoPlay src={audioUrl} className="mt-2 h-8" />
-    )}
-  </div>
-)}
+                  <div className="relative flex flex-col items-center gap-2">
+                    <div
+                      className="w-20 h-20 rounded-full overflow-hidden border-2"
+                      style={{ borderColor: selectedAvatar.hue }}
+                    >
+                      <img
+                        src={selectedAvatar.img}
+                        alt=""
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <span className="font-mono text-[10px] tracking-widest text-[#E8EAED] bg-black/50 px-2 py-0.5 rounded">
+                      BULLETIN READY
+                    </span>
+                  </div>
+                )}
+
                 {/* Lower-third */}
-                {(generating || done) && (
-                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent px-4 pt-6 pb-3">
+                {showAnchor && (
+                  <div
+                    className="absolute left-0 right-0 bg-gradient-to-t from-black/90 to-transparent px-4 pt-6 pb-3 transition-all"
+                    style={{ bottom: done && audioUrl ? "44px" : "0px" }}
+                  >
                     <div className="font-mono text-[9px] tracking-widest text-[#F2B705] mb-0.5">
                       {done ? "READY" : "PROCESSING"}
                     </div>
                     <div className="text-xs text-[#D8DBE0] line-clamp-1">
                       {script || "Untitled bulletin"}
                     </div>
+                  </div>
+                )}
+
+                {/* Bottom audio player bar — sits like a real video player control strip */}
+                {done && audioUrl && (
+                  <div className="absolute bottom-0 left-0 right-0 bg-[#0A0C10] border-t border-white/10 px-3 py-2">
+                    <audio
+                      controls
+                      autoPlay
+                      src={audioUrl}
+                      className="w-full h-8"
+                      style={{ filter: "invert(0.9) hue-rotate(180deg)" }}
+                    />
                   </div>
                 )}
               </div>
