@@ -1,13 +1,11 @@
 """
 NewsDesk.AI - Voice + Avatar (Lip-Sync) Generation Backend
 Stages: SCRIPT -> VOICE -> AVATAR (this file covers Voice + Avatar)
-Avatar stage uses D-ID's Talks API.
+Avatar stage calls your self-hosted SadTalker server (Colab + ngrok).
 """
 
 import os
-import time
 import uuid
-import base64
 import asyncio
 from datetime import datetime
 
@@ -19,7 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-load_dotenv()  # reads DID_API_KEY from .env
+load_dotenv()  # reads SADTALKER_API_URL from .env
 
 app = FastAPI(title="NewsDesk.AI - Voice + Avatar Service")
 
@@ -32,24 +30,16 @@ app.add_middleware(
 )
 
 AUDIO_DIR = "audio_output"
+VIDEO_DIR = "video_output"
 AVATAR_DIR = "avatars"
 os.makedirs(AUDIO_DIR, exist_ok=True)
+os.makedirs(VIDEO_DIR, exist_ok=True)
 
 app.mount("/audio", StaticFiles(directory=AUDIO_DIR), name="audio")
+app.mount("/video", StaticFiles(directory=VIDEO_DIR), name="video")
 
-DID_API_KEY = os.getenv("DID_API_KEY")
-DID_BASE_URL = "https://api.d-id.com"
-
-
-def _did_headers(json_content=True):
-    """D-ID auth: Basic <base64(api_key)> where api_key already contains the colon."""
-    if not DID_API_KEY:
-        raise HTTPException(status_code=500, detail="DID_API_KEY is not set in .env")
-    token = base64.b64encode(DID_API_KEY.encode()).decode()
-    headers = {"Authorization": f"Basic {token}"}
-    if json_content:
-        headers["Content-Type"] = "application/json"
-    return headers
+# This changes every time you restart the Colab notebook — update it in .env each session
+SADTALKER_API_URL = os.getenv("SADTALKER_API_URL")
 
 
 # -----------------------------------------------------------------
@@ -128,47 +118,27 @@ async def generate_voice(req: VoiceGenerateRequest):
     )
 
 
-def _did_upload(filepath: str, endpoint: str) -> str:
-    """Uploads a local file to D-ID's /images or /audios endpoint, returns the hosted URL."""
-    with open(filepath, "rb") as f:
-        files = {"image" if endpoint == "images" else "audio": f}
-        resp = requests.post(
-            f"{DID_BASE_URL}/{endpoint}",
-            headers=_did_headers(json_content=False),
-            files=files,
-        )
+def _call_sadtalker(image_path: str, audio_path: str) -> bytes:
+    """Sends the avatar image + audio to your Colab SadTalker server, returns the mp4 bytes."""
+    if not SADTALKER_API_URL:
+        raise HTTPException(status_code=500, detail="SADTALKER_API_URL is not set in .env")
+
+    url = f"{SADTALKER_API_URL.rstrip('/')}/generate-talking-video"
+    headers = {"ngrok-skip-browser-warning": "true"}
+
+    with open(image_path, "rb") as img_f, open(audio_path, "rb") as aud_f:
+        files = {
+            "image": (os.path.basename(image_path), img_f, "image/jpeg"),
+            "audio": (os.path.basename(audio_path), aud_f, "audio/mpeg"),
+        }
+        resp = requests.post(url, headers=headers, files=files, timeout=600)
+
     if not resp.ok:
-        raise HTTPException(status_code=500, detail=f"D-ID upload to /{endpoint} failed: {resp.status_code} {resp.text}")
-    return resp.json()["url"]
-
-
-def _did_create_and_wait(image_url: str, audio_url: str, timeout_s: int = 120) -> str:
-    """Creates a talk and polls until it's done. Returns the final video URL."""
-    create_resp = requests.post(
-        f"{DID_BASE_URL}/talks",
-        headers=_did_headers(),
-        json={
-            "source_url": image_url,
-            "script": {"type": "audio", "audio_url": audio_url},
-        },
-    )
-    if not create_resp.ok:
-        raise HTTPException(status_code=500, detail=f"D-ID /talks failed: {create_resp.status_code} {create_resp.text}")
-
-    talk_id = create_resp.json()["id"]
-
-    start = time.time()
-    while time.time() - start < timeout_s:
-        status_resp = requests.get(f"{DID_BASE_URL}/talks/{talk_id}", headers=_did_headers())
-        data = status_resp.json()
-        status = data.get("status")
-        if status == "done":
-            return data["result_url"]
-        if status == "error" or status == "rejected":
-            raise HTTPException(status_code=500, detail=f"D-ID generation failed: {data}")
-        time.sleep(3)
-
-    raise HTTPException(status_code=504, detail="D-ID generation timed out.")
+        raise HTTPException(
+            status_code=500,
+            detail=f"SadTalker server error: {resp.status_code} {resp.text[:300]}",
+        )
+    return resp.content
 
 
 @app.post("/generate-avatar-video", response_model=AvatarVideoResponse)
@@ -185,15 +155,18 @@ async def generate_avatar_video(req: AvatarVideoRequest):
         raise HTTPException(status_code=404, detail=f"Audio file not found: {audio_path}")
 
     try:
-        image_url = await asyncio.to_thread(_did_upload, avatar_path, "images")
-        audio_url = await asyncio.to_thread(_did_upload, audio_path, "audios")
-        video_url = await asyncio.to_thread(_did_create_and_wait, image_url, audio_url)
+        video_bytes = await asyncio.to_thread(_call_sadtalker, avatar_path, audio_path)
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Avatar video generation failed: {e}")
 
-    return AvatarVideoResponse(video_url=video_url)
+    filename = f"{uuid.uuid4().hex}.mp4"
+    filepath = os.path.join(VIDEO_DIR, filename)
+    with open(filepath, "wb") as f:
+        f.write(video_bytes)
+
+    return AvatarVideoResponse(video_url=f"/video/{filename}")
 
 
 @app.get("/health")
