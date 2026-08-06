@@ -79,6 +79,8 @@ export default function App() {
     setGenerating(true);
     setStageIdx(1); // VOICE
 
+    let localAudioUrl = null;
+
     try {
       const voiceRes = await fetch(`${API_BASE}/generate-voice`, {
         method: "POST",
@@ -87,9 +89,10 @@ export default function App() {
       });
       if (!voiceRes.ok) throw new Error(`Voice failed: ${voiceRes.status}`);
       const voiceData = await voiceRes.json();
-      setAudioUrl(`${API_BASE}${voiceData.audio_url}`);
+      localAudioUrl = `${API_BASE}${voiceData.audio_url}`;
+      setAudioUrl(localAudioUrl);
 
-      setStageIdx(2); // AVATAR — this can take 30-60s+ on D-ID
+      setStageIdx(2); // AVATAR — this can take several minutes on free Colab GPU
       const avatarRes = await fetch(`${API_BASE}/generate-avatar-video`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -107,6 +110,11 @@ export default function App() {
       console.error("Generation failed:", err);
       setGenerating(false);
       setStageIdx(-1);
+      // Voice already succeeded even though avatar video failed/timed out —
+      // still mark as "done" so the audio player shows up instead of disappearing.
+      if (localAudioUrl) {
+        setDone(true);
+      }
     }
   };
 
