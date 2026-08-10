@@ -14,13 +14,13 @@ export default function PipelineBar({ theme, stageIdx, done }) {
             <div
               className="w-1.5 h-1.5 rounded-full shrink-0"
               style={{
-                backgroundColor: active ? "#F2B705" : passed ? "#2EC4B6" : theme.panelBorder,
+                backgroundColor: active ? "#F2B705" : passed ? "#c42e2e" : theme.panelBorder,
               }}
             />
             <span
               className="font-mono text-[10px] tracking-widest"
               style={{
-                color: active ? "#F2B705" : passed ? "#2EC4B6" : theme.textFaint,
+                color: active ? "#F2B705" : passed ? "#c42e47" : theme.textFaint,
               }}
             >
               {s}
