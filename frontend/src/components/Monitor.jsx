@@ -1,5 +1,6 @@
 import { UserRound } from "lucide-react";
 import { STAGES } from "../data";
+import NewsTicker from "./NewsTicker";
 
 export default function Monitor({
   theme,
@@ -11,6 +12,7 @@ export default function Monitor({
   stageIdx,
   audioUrl,
   talkingVideoUrl,
+  tickerItems,
 }) {
   const showAnchor = generating || done;
 
@@ -114,6 +116,8 @@ export default function Monitor({
             )}
           </div>
         </div>
+
+        <NewsTicker theme={theme} items={tickerItems} />
       </div>
     </div>
   );

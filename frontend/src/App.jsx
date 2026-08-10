@@ -3,7 +3,6 @@ import Header from "./components/Header";
 import PipelineBar from "./components/PipelineBar";
 import ControlDesk from "./components/ControlDesk";
 import Monitor from "./components/Monitor";
-import NewsTicker from "./components/NewsTicker";
 import { THEMES } from "./theme";
 import { VOICES, AVATARS, VIDEOS, API_BASE } from "./data";
 
@@ -104,7 +103,7 @@ export default function App() {
 
       <PipelineBar theme={theme} stageIdx={stageIdx} done={done} />
 
-      <main className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-0 pb-9">
+      <main className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-0">
         <ControlDesk
           theme={theme}
           script={script}
@@ -130,10 +129,9 @@ export default function App() {
           stageIdx={stageIdx}
           audioUrl={audioUrl}
           talkingVideoUrl={talkingVideoUrl}
+          tickerItems={TICKER_ITEMS}
         />
       </main>
-
-      <NewsTicker theme={theme} items={TICKER_ITEMS} />
     </div>
   );
 }

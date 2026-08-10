@@ -1,3 +1,5 @@
+import { Globe } from "lucide-react";
+
 export default function NewsTicker({ theme, items }) {
   // Duplicate the items so the loop feels seamless with no visible gap/restart
   const loopItems = [...items, ...items];
@@ -5,13 +7,14 @@ export default function NewsTicker({ theme, items }) {
   return (
     <div
       className="fixed bottom-0 left-0 right-0 h-9 flex items-center overflow-hidden border-t z-30"
-      style={{ backgroundColor: theme.accent, borderColor: theme.panelBorder }}
+      style={{ backgroundColor: "#f32b43", borderColor: theme.panelBorder }}
     >
       <div
-        className="font-mono text-[9px] tracking-widest px-3 py-1 shrink-0"
+        className="flex items-center gap-1.5 px-3 py-1 shrink-0"
         style={{ backgroundColor: "#000", color: "#fff" }}
       >
-        LIVE
+        <Globe size={12} strokeWidth={2} />
+        <span className="font-mono text-[9px] tracking-widest">WORLD</span>
       </div>
       <div className="relative flex-1 h-full overflow-hidden">
         <div className="ticker-track flex items-center h-full whitespace-nowrap absolute left-0 top-0">
