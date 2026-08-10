@@ -1,9 +1,17 @@
 import { useState, useEffect } from "react";
 import Header from "./components/Header";
+import PipelineBar from "./components/PipelineBar";
 import ControlDesk from "./components/ControlDesk";
 import Monitor from "./components/Monitor";
+import NewsTicker from "./components/NewsTicker";
 import { THEMES } from "./theme";
 import { VOICES, AVATARS, VIDEOS, API_BASE } from "./data";
+
+const TICKER_ITEMS = [
+  "NEWSDESK.AI — AI-GENERATED BROADCAST BULLETIN",
+  "TYPE A SCRIPT, PICK A VOICE AND AVATAR, GO LIVE",
+  "POWERED BY EDGE-TTS AND SADTALKER",
+];
 
 export default function App() {
   const [themeMode, setThemeMode] = useState("light"); // default = white
@@ -94,7 +102,9 @@ export default function App() {
         timeStr={timeStr}
       />
 
-      <main className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-0">
+      <PipelineBar theme={theme} stageIdx={stageIdx} done={done} />
+
+      <main className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-0 pb-9">
         <ControlDesk
           theme={theme}
           script={script}
@@ -122,6 +132,8 @@ export default function App() {
           talkingVideoUrl={talkingVideoUrl}
         />
       </main>
+
+      <NewsTicker theme={theme} items={TICKER_ITEMS} />
     </div>
   );
 }
