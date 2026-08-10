@@ -1,5 +1,6 @@
 import { UserRound } from "lucide-react";
 import NewsTicker from "./NewsTicker";
+import AudioPlayerBar from "./AudioPlayerBar";
 
 export default function Monitor({
   theme,
@@ -53,8 +54,8 @@ export default function Monitor({
               style={{
                 right: "0%",
                 top: "0%",
-                width: "35%",
-                height: "86.5%",
+                width: "42%",
+                height: "100%",
                 borderColor: selectedAvatar.hue,
               }}
             >
@@ -71,8 +72,8 @@ export default function Monitor({
               style={{
                 right: "0%",
                 top: "0%",
-                width: "35%",
-                height: "86.5%",
+                width: "42%",
+                height: "100%",
                 borderColor: selectedAvatar.hue,
               }}
             >
@@ -105,31 +106,8 @@ export default function Monitor({
           )}
         </div>
 
-        {/* AUDIO BAR — same red-gradient pill style as the ticker, shown until the talking video is ready */}
-        {audioUrl && !talkingVideoUrl && (
-          <div
-            className="w-full h-12 mt-3 flex items-center gap-3 px-4 rounded-[20px] border"
-            style={{
-              background: "linear-gradient(180deg, #ff5265 0%, #f32b43 50%, #c9142c 100%)",
-              borderColor: "rgba(255,255,255,0.35)",
-              boxShadow: "0 3px 10px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.45)",
-            }}
-          >
-            <span
-              className="text-white text-[9px] font-mono tracking-widest shrink-0"
-              style={{ textShadow: "0 1px 2px rgba(0,0,0,0.4)" }}
-            >
-              AUDIO READY
-            </span>
-            <audio
-              controls
-              autoPlay
-              src={audioUrl}
-              className="flex-1 h-8"
-              style={{ filter: "invert(0.9) hue-rotate(180deg)" }}
-            />
-          </div>
-        )}
+        {/* AUDIO BAR — custom VLC-style player in the same red-gradient theme */}
+        {audioUrl && !talkingVideoUrl && <AudioPlayerBar audioUrl={audioUrl} />}
 
         {/* TICKER — sits right under the monitor (and under the audio bar, if present) */}
         <NewsTicker theme={theme} items={tickerItems} />
