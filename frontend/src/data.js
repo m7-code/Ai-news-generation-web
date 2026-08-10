@@ -1,127 +1,32 @@
-import { useState, useEffect } from "react";
-import Header from "./components/Header";
-import ControlDesk from "./components/ControlDesk";
-import Monitor from "./components/Monitor";
-import { THEMES } from "./theme";
-import { VOICES, AVATARS, VIDEOS, API_BASE } from "./data";
+import female1 from "./assets/avatars/female1.jpg";
+import female2 from "./assets/avatars/female2.jpg";
+import male1 from "./assets/avatars/male1.jpg";
+import male2 from "./assets/avatars/male2.jpg";
+import video1 from "./assets/videos/video1.mp4";
+import video2 from "./assets/videos/video2.mp4";
+import video3 from "./assets/videos/video3.mp4";
+import video4 from "./assets/videos/video4.mp4";
 
-export default function App() {
-  const [themeMode, setThemeMode] = useState("light"); // default = white
-  const theme = THEMES[themeMode];
+export const VOICES = [
+  { id: "en-US-AriaNeural", name: "Aria", tag: "English (US) · Female" },
+  { id: "en-US-GuyNeural", name: "Guy", tag: "English (US) · Male" },
+  { id: "ur-PK-UzmaNeural", name: "Uzma", tag: "Urdu (PK) · Female" },
+  { id: "ur-PK-AsadNeural", name: "Asad", tag: "Urdu (PK) · Male" },
+];
 
-  const [script, setScript] = useState("");
-  const [voice, setVoice] = useState(VOICES[0].id);
-  const [avatar, setAvatar] = useState(AVATARS[0].id);
-  const [bgVideo, setBgVideo] = useState(VIDEOS[0].id);
+export const AVATARS = [
+  { id: "a1", label: "Female 01", hue: "#E63946", img: female1 },
+  { id: "a2", label: "Female 02", hue: "#F2B705", img: female2 },
+  { id: "a3", label: "Male 01", hue: "#2EC4B6", img: male1 },
+  { id: "a4", label: "Male 02", hue: "#8E7DFF", img: male2 },
+];
 
-  const [generating, setGenerating] = useState(false);
-  const [stageIdx, setStageIdx] = useState(-1);
-  const [done, setDone] = useState(false);
-  const [audioUrl, setAudioUrl] = useState(null);
-  const [talkingVideoUrl, setTalkingVideoUrl] = useState(null);
-  const [clock, setClock] = useState(new Date());
+export const VIDEOS = [
+  { id: "v1", label: "Studio 01", src: video1 },
+  { id: "v2", label: "Studio 02", src: video2 },
+  { id: "v3", label: "Studio 03", src: video3 },
+  { id: "v4", label: "Studio 04", src: video4 },
+];
 
-  useEffect(() => {
-    const t = setInterval(() => setClock(new Date()), 1000);
-    return () => clearInterval(t);
-  }, []);
-
-  const canGenerate = script.trim().length > 0 && !generating;
-
-  const handleGenerate = async () => {
-    if (!canGenerate) return;
-    setDone(false);
-    setAudioUrl(null);
-    setTalkingVideoUrl(null);
-    setGenerating(true);
-    setStageIdx(1); // VOICE
-
-    let localAudioUrl = null;
-
-    try {
-      const voiceRes = await fetch(`${API_BASE}/generate-voice`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ script, voice_id: voice }),
-      });
-      if (!voiceRes.ok) throw new Error(`Voice failed: ${voiceRes.status}`);
-      const voiceData = await voiceRes.json();
-      localAudioUrl = `${API_BASE}${voiceData.audio_url}`;
-      setAudioUrl(localAudioUrl);
-
-      setStageIdx(2); // AVATAR
-      const avatarRes = await fetch(`${API_BASE}/generate-avatar-video`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ avatar_id: avatar, audio_filename: voiceData.filename }),
-      });
-      if (!avatarRes.ok) throw new Error(`Avatar failed: ${avatarRes.status}`);
-      const avatarData = await avatarRes.json();
-      setTalkingVideoUrl(avatarData.video_url);
-
-      setStageIdx(3); // RENDER
-      setGenerating(false);
-      setDone(true);
-      setStageIdx(-1);
-    } catch (err) {
-      console.error("Generation failed:", err);
-      setGenerating(false);
-      setStageIdx(-1);
-      if (localAudioUrl) setDone(true); // voice succeeded even if avatar failed
-    }
-  };
-
-  const timeStr = clock.toLocaleTimeString("en-GB", { hour12: false });
-  const selectedAvatar = AVATARS.find((a) => a.id === avatar);
-  const selectedVideo = VIDEOS.find((v) => v.id === bgVideo);
-
-  return (
-    <div
-      className="min-h-screen w-full font-sans transition-colors duration-200"
-      style={{ backgroundColor: theme.bg, color: theme.text }}
-    >
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
-        .font-display { font-family: 'Archivo Black', sans-serif; }
-        .font-sans { font-family: 'Inter', sans-serif; }
-        .font-mono { font-family: 'IBM Plex Mono', monospace; }
-      `}</style>
-
-      <Header
-        theme={theme}
-        onToggleTheme={() => setThemeMode((m) => (m === "light" ? "dark" : "light"))}
-        generating={generating}
-        timeStr={timeStr}
-      />
-
-      <main className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-0">
-        <ControlDesk
-          theme={theme}
-          script={script}
-          setScript={setScript}
-          voice={voice}
-          setVoice={setVoice}
-          avatar={avatar}
-          setAvatar={setAvatar}
-          bgVideo={bgVideo}
-          setBgVideo={setBgVideo}
-          generating={generating}
-          canGenerate={canGenerate}
-          onGenerate={handleGenerate}
-        />
-
-        <Monitor
-          theme={theme}
-          script={script}
-          selectedAvatar={selectedAvatar}
-          selectedVideo={selectedVideo}
-          generating={generating}
-          done={done}
-          stageIdx={stageIdx}
-          audioUrl={audioUrl}
-          talkingVideoUrl={talkingVideoUrl}
-        />
-      </main>
-    </div>
-  );
-}
+export const STAGES = ["SCRIPT", "VOICE", "AVATAR", "RENDER"];
+export const API_BASE = "http://localhost:8000";
