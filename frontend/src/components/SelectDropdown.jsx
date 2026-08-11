@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Upload } from "lucide-react";
 
 /**
  * Generic labeled dropdown.
  * kind: "voice" | "avatar" | "video" — controls how each row/trigger renders.
+ * Pass onUpload + uploadAccept to show an "Upload your own" row at the bottom.
  */
 export default function SelectDropdown({
   theme,
@@ -12,9 +13,13 @@ export default function SelectDropdown({
   options,
   value,
   onChange,
+  onUpload,
+  uploadAccept,
+  uploading,
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
+  const fileInputRef = useRef(null);
   const selected = options.find((o) => o.id === value);
 
   useEffect(() => {
@@ -154,6 +159,50 @@ export default function SelectDropdown({
               </button>
             );
           })}
+
+          {onUpload && (
+            <>
+              <div
+                className="h-px mx-2"
+                style={{ backgroundColor: theme.panelBorder }}
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full flex items-center gap-2.5 px-3 py-2.5 transition text-left"
+                disabled={uploading}
+              >
+                <div
+                  className="flex items-center justify-center shrink-0"
+                  style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: kind === "avatar" ? "9999px" : "4px",
+                    border: `1px dashed ${theme.textFaint}`,
+                  }}
+                >
+                  <Upload size={12} style={{ color: theme.textMuted }} />
+                </div>
+                <span
+                  className="text-sm"
+                  style={{ color: theme.textMuted }}
+                >
+                  {uploading ? "Uploading…" : "Upload your own"}
+                </span>
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept={uploadAccept}
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) onUpload(file);
+                  setOpen(false);
+                  e.target.value = "";
+                }}
+              />
+            </>
+          )}
         </div>
       )}
     </div>

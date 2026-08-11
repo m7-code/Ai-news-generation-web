@@ -12,7 +12,7 @@ from datetime import datetime
 import edge_tts
 import requests
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -79,8 +79,11 @@ class VoiceGenerateResponse(BaseModel):
 
 
 class AvatarVideoRequest(BaseModel):
-    avatar_id: str = Field(..., description="One of: a1, a2, a3, a4")
-    audio_filename: str = Field(..., description="filename returned by /generate-voice")
+    avatar_id: str = Field(
+        ...,
+        description="Either a preset id (a1-a4) or a filename returned by /upload-avatar",
+    )
+    audio_filename: str = Field(..., description="filename returned by /generate-voice or /upload-audio")
 
 
 class AvatarVideoResponse(BaseModel):
@@ -118,6 +121,33 @@ async def generate_voice(req: VoiceGenerateRequest):
     )
 
 
+@app.post("/upload-avatar")
+async def upload_avatar(image: UploadFile = File(...)):
+    ext = os.path.splitext(image.filename)[1] or ".jpg"
+    filename = f"custom_{uuid.uuid4().hex}{ext}"
+    filepath = os.path.join(AVATAR_DIR, filename)
+
+    with open(filepath, "wb") as f:
+        f.write(await image.read())
+
+    return {"avatar_id": filename, "preview_url": None}
+
+
+@app.post("/upload-audio")
+async def upload_audio(audio: UploadFile = File(...)):
+    ext = os.path.splitext(audio.filename)[1] or ".mp3"
+    filename = f"custom_{uuid.uuid4().hex}{ext}"
+    filepath = os.path.join(AUDIO_DIR, filename)
+
+    with open(filepath, "wb") as f:
+        f.write(await audio.read())
+
+    return {
+        "audio_url": f"/audio/{filename}",
+        "filename": filename,
+    }
+
+
 def _call_sadtalker(image_path: str, audio_path: str) -> bytes:
     """Sends the avatar image + audio to your Colab SadTalker server, returns the mp4 bytes."""
     if not SADTALKER_API_URL:
@@ -143,10 +173,12 @@ def _call_sadtalker(image_path: str, audio_path: str) -> bytes:
 
 @app.post("/generate-avatar-video", response_model=AvatarVideoResponse)
 async def generate_avatar_video(req: AvatarVideoRequest):
-    if req.avatar_id not in AVATAR_FILES:
-        raise HTTPException(status_code=400, detail="Unknown avatar_id. Use a1, a2, a3, or a4.")
+    if req.avatar_id in AVATAR_FILES:
+        avatar_path = os.path.join(AVATAR_DIR, AVATAR_FILES[req.avatar_id])
+    else:
+        # Assume it's a filename returned by /upload-avatar
+        avatar_path = os.path.join(AVATAR_DIR, req.avatar_id)
 
-    avatar_path = os.path.join(AVATAR_DIR, AVATAR_FILES[req.avatar_id])
     audio_path = os.path.join(AUDIO_DIR, req.audio_filename)
 
     if not os.path.exists(avatar_path):

@@ -1,7 +1,6 @@
 import { Play, Loader2 } from "lucide-react";
 import ScriptPanel from "./ScriptPanel";
 import SelectDropdown from "./SelectDropdown";
-import { VOICES, AVATARS, VIDEOS } from "../data";
 
 export default function ControlDesk({
   theme,
@@ -9,10 +8,19 @@ export default function ControlDesk({
   setScript,
   voice,
   setVoice,
+  voiceOptions,
+  onVoiceUpload,
+  uploadingVoice,
   avatar,
   setAvatar,
+  avatarOptions,
+  onAvatarUpload,
+  uploadingAvatar,
   bgVideo,
   setBgVideo,
+  videoOptions,
+  onVideoUpload,
+  uploadingVideo,
   generating,
   canGenerate,
   onGenerate,
@@ -28,27 +36,36 @@ export default function ControlDesk({
         theme={theme}
         heading="02 · VOICE"
         kind="voice"
-        options={VOICES}
+        options={voiceOptions}
         value={voice}
         onChange={setVoice}
+        onUpload={onVoiceUpload}
+        uploadAccept="audio/*"
+        uploading={uploadingVoice}
       />
 
       <SelectDropdown
         theme={theme}
         heading="03 · AVATAR"
         kind="avatar"
-        options={AVATARS}
+        options={avatarOptions}
         value={avatar}
         onChange={setAvatar}
+        onUpload={onAvatarUpload}
+        uploadAccept="image/*"
+        uploading={uploadingAvatar}
       />
 
       <SelectDropdown
         theme={theme}
         heading="04 · BACKGROUND"
         kind="video"
-        options={VIDEOS}
+        options={videoOptions}
         value={bgVideo}
         onChange={setBgVideo}
+        onUpload={onVideoUpload}
+        uploadAccept="video/*"
+        uploading={uploadingVideo}
       />
 
       <button

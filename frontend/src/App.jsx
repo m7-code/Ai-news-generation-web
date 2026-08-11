@@ -17,9 +17,19 @@ export default function App() {
   const theme = THEMES[themeMode];
 
   const [script, setScript] = useState("");
+
+  // Preset + custom-uploaded options live together in these lists
+  const [voiceOptions, setVoiceOptions] = useState(VOICES);
+  const [avatarOptions, setAvatarOptions] = useState(AVATARS);
+  const [videoOptions, setVideoOptions] = useState(VIDEOS);
+
   const [voice, setVoice] = useState(VOICES[0].id);
   const [avatar, setAvatar] = useState(AVATARS[0].id);
   const [bgVideo, setBgVideo] = useState(VIDEOS[0].id);
+
+  const [uploadingVoice, setUploadingVoice] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [uploadingVideo, setUploadingVideo] = useState(false);
 
   const [generating, setGenerating] = useState(false);
   const [stageIdx, setStageIdx] = useState(-1);
@@ -35,6 +45,86 @@ export default function App() {
 
   const canGenerate = script.trim().length > 0 && !generating;
 
+  // ---------------------------------------------------------------
+  // Uploads
+  // ---------------------------------------------------------------
+
+  // Custom voice = a pre-recorded audio file. We upload it right away so
+  // it's ready to use the moment the user hits Go Live.
+  const handleVoiceUpload = async (file) => {
+    setUploadingVoice(true);
+    try {
+      const form = new FormData();
+      form.append("audio", file);
+      const res = await fetch(`${API_BASE}/upload-audio`, { method: "POST", body: form });
+      if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
+      const data = await res.json();
+
+      const newOption = {
+        id: data.filename,
+        name: file.name.length > 18 ? file.name.slice(0, 15) + "…" : file.name,
+        tag: "Custom upload",
+        isCustomAudio: true,
+        audioUrl: `${API_BASE}${data.audio_url}`,
+      };
+      setVoiceOptions((prev) => [...prev, newOption]);
+      setVoice(newOption.id);
+    } catch (err) {
+      console.error("Voice upload failed:", err);
+      alert("Audio upload failed. Check the backend terminal for details.");
+    } finally {
+      setUploadingVoice(false);
+    }
+  };
+
+  // Custom avatar = upload the image to the backend right away so it's on
+  // disk and ready for /generate-avatar-video later.
+  const handleAvatarUpload = async (file) => {
+    setUploadingAvatar(true);
+    try {
+      const form = new FormData();
+      form.append("image", file);
+      const res = await fetch(`${API_BASE}/upload-avatar`, { method: "POST", body: form });
+      if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
+      const data = await res.json();
+
+      const newOption = {
+        id: data.avatar_id,
+        label: "Custom",
+        hue: "#8E7DFF",
+        img: URL.createObjectURL(file),
+      };
+      setAvatarOptions((prev) => [...prev, newOption]);
+      setAvatar(newOption.id);
+    } catch (err) {
+      console.error("Avatar upload failed:", err);
+      alert("Avatar upload failed. Check the backend terminal for details.");
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
+  // Custom background video is purely cosmetic (loops behind the anchor),
+  // so no backend call is needed — just use it locally in the browser.
+  const handleVideoUpload = (file) => {
+    setUploadingVideo(true);
+    try {
+      const newOption = {
+        id: `custom-${Date.now()}`,
+        label: "Custom",
+        src: URL.createObjectURL(file),
+      };
+      setVideoOptions((prev) => [...prev, newOption]);
+      setBgVideo(newOption.id);
+    } finally {
+      setUploadingVideo(false);
+    }
+  };
+
+  // ---------------------------------------------------------------
+  // Generate
+  // ---------------------------------------------------------------
+
   const handleGenerate = async () => {
     if (!canGenerate) return;
     setDone(false);
@@ -46,21 +136,32 @@ export default function App() {
     let localAudioUrl = null;
 
     try {
-      const voiceRes = await fetch(`${API_BASE}/generate-voice`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ script, voice_id: voice }),
-      });
-      if (!voiceRes.ok) throw new Error(`Voice failed: ${voiceRes.status}`);
-      const voiceData = await voiceRes.json();
-      localAudioUrl = `${API_BASE}${voiceData.audio_url}`;
-      setAudioUrl(localAudioUrl);
+      const selectedVoiceOpt = voiceOptions.find((v) => v.id === voice);
+      let audioFilename;
+
+      if (selectedVoiceOpt?.isCustomAudio) {
+        // Already uploaded — skip TTS generation entirely.
+        audioFilename = selectedVoiceOpt.id;
+        localAudioUrl = selectedVoiceOpt.audioUrl;
+        setAudioUrl(localAudioUrl);
+      } else {
+        const voiceRes = await fetch(`${API_BASE}/generate-voice`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ script, voice_id: voice }),
+        });
+        if (!voiceRes.ok) throw new Error(`Voice failed: ${voiceRes.status}`);
+        const voiceData = await voiceRes.json();
+        audioFilename = voiceData.filename;
+        localAudioUrl = `${API_BASE}${voiceData.audio_url}`;
+        setAudioUrl(localAudioUrl);
+      }
 
       setStageIdx(2); // AVATAR
       const avatarRes = await fetch(`${API_BASE}/generate-avatar-video`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ avatar_id: avatar, audio_filename: voiceData.filename }),
+        body: JSON.stringify({ avatar_id: avatar, audio_filename: audioFilename }),
       });
       if (!avatarRes.ok) throw new Error(`Avatar failed: ${avatarRes.status}`);
       const avatarData = await avatarRes.json();
@@ -79,8 +180,8 @@ export default function App() {
   };
 
   const timeStr = clock.toLocaleTimeString("en-GB", { hour12: false });
-  const selectedAvatar = AVATARS.find((a) => a.id === avatar);
-  const selectedVideo = VIDEOS.find((v) => v.id === bgVideo);
+  const selectedAvatar = avatarOptions.find((a) => a.id === avatar);
+  const selectedVideo = videoOptions.find((v) => v.id === bgVideo);
 
   return (
     <div
@@ -110,10 +211,19 @@ export default function App() {
           setScript={setScript}
           voice={voice}
           setVoice={setVoice}
+          voiceOptions={voiceOptions}
+          onVoiceUpload={handleVoiceUpload}
+          uploadingVoice={uploadingVoice}
           avatar={avatar}
           setAvatar={setAvatar}
+          avatarOptions={avatarOptions}
+          onAvatarUpload={handleAvatarUpload}
+          uploadingAvatar={uploadingAvatar}
           bgVideo={bgVideo}
           setBgVideo={setBgVideo}
+          videoOptions={videoOptions}
+          onVideoUpload={handleVideoUpload}
+          uploadingVideo={uploadingVideo}
           generating={generating}
           canGenerate={canGenerate}
           onGenerate={handleGenerate}
