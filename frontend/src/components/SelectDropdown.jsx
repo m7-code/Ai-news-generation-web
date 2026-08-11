@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { ChevronDown, Upload } from "lucide-react";
+import { ChevronDown, Upload, Mic2, UserRound, Film } from "lucide-react";
 
 /**
  * Generic labeled dropdown.
@@ -21,6 +21,8 @@ export default function SelectDropdown({
   const ref = useRef(null);
   const fileInputRef = useRef(null);
   const selected = options.find((o) => o.id === value);
+
+  const KindIcon = kind === "voice" ? Mic2 : kind === "avatar" ? UserRound : Film;
 
   useEffect(() => {
     function handleClickOutside(e) {
@@ -103,7 +105,7 @@ export default function SelectDropdown({
                 border: `1px dashed ${theme.textFaint}`,
               }}
             >
-              <Upload size={13} style={{ color: theme.textMuted }} />
+              <KindIcon size={13} style={{ color: theme.textMuted }} />
             </div>
           )}
           <div className="min-w-0 text-left">
