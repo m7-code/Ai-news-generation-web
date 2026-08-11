@@ -23,9 +23,9 @@ export default function App() {
   const [avatarOptions, setAvatarOptions] = useState(AVATARS);
   const [videoOptions, setVideoOptions] = useState(VIDEOS);
 
-  const [voice, setVoice] = useState(VOICES[0].id);
-  const [avatar, setAvatar] = useState(AVATARS[0].id);
-  const [bgVideo, setBgVideo] = useState(VIDEOS[0].id);
+  const [voice, setVoice] = useState(null);
+  const [avatar, setAvatar] = useState(null);
+  const [bgVideo, setBgVideo] = useState(null);
 
   const [uploadingVoice, setUploadingVoice] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
@@ -43,7 +43,8 @@ export default function App() {
     return () => clearInterval(t);
   }, []);
 
-  const canGenerate = script.trim().length > 0 && !generating;
+  const canGenerate =
+    script.trim().length > 0 && !!voice && !!avatar && !!bgVideo && !generating;
 
   // ---------------------------------------------------------------
   // Uploads

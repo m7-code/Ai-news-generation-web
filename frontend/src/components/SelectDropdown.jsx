@@ -91,13 +91,27 @@ export default function SelectDropdown({
         }}
       >
         <div className="flex items-center gap-2.5 min-w-0">
-          {selected && <Thumb item={selected} />}
+          {selected ? (
+            <Thumb item={selected} />
+          ) : (
+            <div
+              className="flex items-center justify-center shrink-0"
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: kind === "avatar" ? "9999px" : "4px",
+                border: `1px dashed ${theme.textFaint}`,
+              }}
+            >
+              <Upload size={13} style={{ color: theme.textMuted }} />
+            </div>
+          )}
           <div className="min-w-0 text-left">
             <div
               className="text-sm font-medium truncate"
-              style={{ color: theme.text }}
+              style={{ color: selected ? theme.text : theme.textMuted }}
             >
-              {selected?.name || selected?.label}
+              {selected ? selected.name || selected.label : "Upload your own or select from the list"}
             </div>
             {selected?.tag && (
               <div

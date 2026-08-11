@@ -29,16 +29,18 @@ export default function Monitor({
             backgroundColor: theme.monitorFrame,
           }}
         >
-          <video
-            key={selectedVideo.id}
-            src={selectedVideo.src}
-            className="absolute inset-0 w-full h-full object-cover rounded-lg transition-opacity duration-500"
-            style={{ opacity: showAnchor ? 1 : 0.15 }}
-            muted
-            loop
-            playsInline
-            autoPlay
-          />
+          {selectedVideo && (
+            <video
+              key={selectedVideo.id}
+              src={selectedVideo.src}
+              className="absolute inset-0 w-full h-full object-cover rounded-lg transition-opacity duration-500"
+              style={{ opacity: showAnchor ? 1 : 0.15 }}
+              muted
+              loop
+              playsInline
+              autoPlay
+            />
+          )}
           <div className="absolute inset-0 bg-black/35 rounded-lg" />
 
           {!showAnchor && (
@@ -55,7 +57,7 @@ export default function Monitor({
                 right: "0%",
                 top: "0%",
                 width: "42%",
-                height: "100%",
+                height: "92%",
                 borderColor: selectedAvatar.hue,
               }}
             >
@@ -73,7 +75,7 @@ export default function Monitor({
                 right: "0%",
                 top: "0%",
                 width: "42%",
-                height: "100%",
+                height: "92%",
                 borderColor: selectedAvatar.hue,
               }}
             >
