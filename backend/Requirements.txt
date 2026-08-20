@@ -2,5 +2,3 @@ fastapi
 uvicorn[standard]
 edge-tts
 python-multipart
-python-dotenv
-requests

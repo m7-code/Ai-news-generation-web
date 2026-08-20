@@ -1,2 +1,15 @@
 venv/
+__pycache__/
+*.pyc
+
+# Environment secrets
 .env
+.env.local
+
+# SadTalker — clone separately, don't commit
+SadTalker/
+
+# Generated runtime files
+audio_output/
+video_output/
+avatars/custom_*

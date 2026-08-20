@@ -1,23 +1,22 @@
 """
 NewsDesk.AI - Voice + Avatar (Lip-Sync) Generation Backend
 Stages: SCRIPT -> VOICE -> AVATAR (this file covers Voice + Avatar)
-Avatar stage calls your self-hosted SadTalker server (Colab + ngrok).
+Avatar stage runs SadTalker LOCALLY (no ngrok / Colab) via subprocess, CPU mode.
 """
 
 import os
+import glob
 import uuid
+import shutil
 import asyncio
+import subprocess
 from datetime import datetime
 
 import edge_tts
-import requests
-from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
-
-load_dotenv()  # reads SADTALKER_API_URL from .env
 
 app = FastAPI(title="NewsDesk.AI - Voice + Avatar Service")
 
@@ -29,17 +28,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-AUDIO_DIR = "audio_output"
-VIDEO_DIR = "video_output"
-AVATAR_DIR = "avatars"
-os.makedirs(AUDIO_DIR, exist_ok=True)
-os.makedirs(VIDEO_DIR, exist_ok=True)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+AUDIO_DIR = os.path.join(BASE_DIR, "audio_output")
+VIDEO_DIR = os.path.join(BASE_DIR, "video_output")
+AVATAR_DIR = os.path.join(BASE_DIR, "avatars")
+
+# Path to the SadTalker repo you cloned in Step 1 — adjust if you put it elsewhere
+SADTALKER_DIR = os.path.join(BASE_DIR, "SadTalker")
+
+for d in (AUDIO_DIR, VIDEO_DIR, AVATAR_DIR):
+    os.makedirs(d, exist_ok=True)
 
 app.mount("/audio", StaticFiles(directory=AUDIO_DIR), name="audio")
 app.mount("/video", StaticFiles(directory=VIDEO_DIR), name="video")
-
-# This changes every time you restart the Colab notebook — update it in .env each session
-SADTALKER_API_URL = os.getenv("SADTALKER_API_URL")
 
 
 # -----------------------------------------------------------------
@@ -55,7 +56,6 @@ VOICES = [
 ]
 VOICE_IDS = {v["id"] for v in VOICES}
 
-# Maps the avatar_id the frontend sends to the local file in /avatars
 AVATAR_FILES = {
     "a1": "female1.jpg",
     "a2": "female2.jpg",
@@ -148,27 +148,55 @@ async def upload_audio(audio: UploadFile = File(...)):
     }
 
 
-def _call_sadtalker(image_path: str, audio_path: str) -> bytes:
-    """Sends the avatar image + audio to your Colab SadTalker server, returns the mp4 bytes."""
-    if not SADTALKER_API_URL:
-        raise HTTPException(status_code=500, detail="SADTALKER_API_URL is not set in .env")
-
-    url = f"{SADTALKER_API_URL.rstrip('/')}/generate-talking-video"
-    headers = {"ngrok-skip-browser-warning": "true"}
-
-    with open(image_path, "rb") as img_f, open(audio_path, "rb") as aud_f:
-        files = {
-            "image": (os.path.basename(image_path), img_f, "image/jpeg"),
-            "audio": (os.path.basename(audio_path), aud_f, "audio/mpeg"),
-        }
-        resp = requests.post(url, headers=headers, files=files, timeout=600)
-
-    if not resp.ok:
+def _run_sadtalker_local(image_path: str, audio_path: str, job_id: str) -> str:
+    """
+    Runs SadTalker's inference.py directly as a subprocess (CPU mode),
+    no network hop. Returns the path to the generated mp4.
+    """
+    if not os.path.isdir(SADTALKER_DIR):
         raise HTTPException(
             status_code=500,
-            detail=f"SadTalker server error: {resp.status_code} {resp.text[:300]}",
+            detail=f"SadTalker folder not found at {SADTALKER_DIR}. Did you clone it into backend/SadTalker?",
         )
-    return resp.content
+
+    result_dir = os.path.join(VIDEO_DIR, f"job_{job_id}")
+    os.makedirs(result_dir, exist_ok=True)
+
+    cmd = [
+        "python", "inference.py",
+        "--driven_audio", audio_path,
+        "--source_image", image_path,
+        "--result_dir", result_dir,
+        "--still",
+        "--preprocess", "crop",  # fastest mode — good enough for a talking-head clip
+        "--cpu",                  # force CPU inference (no NVIDIA GPU on this machine)
+    ]
+
+    try:
+        proc = subprocess.run(
+            cmd,
+            cwd=SADTALKER_DIR,
+            capture_output=True,
+            text=True,
+            timeout=1800,  # 30 min hard ceiling on CPU — should return much sooner for a 1-2s clip
+        )
+    except subprocess.TimeoutExpired:
+        raise HTTPException(status_code=504, detail="SadTalker timed out (30 min) on CPU.")
+
+    if proc.returncode != 0:
+        raise HTTPException(
+            status_code=500,
+            detail=f"SadTalker failed:\nSTDOUT:\n{proc.stdout[-1500:]}\nSTDERR:\n{proc.stderr[-1500:]}",
+        )
+
+    videos = glob.glob(os.path.join(result_dir, "*.mp4")) + glob.glob(os.path.join(result_dir, "**", "*.mp4"))
+    if not videos:
+        raise HTTPException(
+            status_code=500,
+            detail=f"SadTalker ran but produced no .mp4 in {result_dir}.\nSTDOUT:\n{proc.stdout[-1000:]}",
+        )
+
+    return max(videos, key=os.path.getctime)
 
 
 @app.post("/generate-avatar-video", response_model=AvatarVideoResponse)
@@ -176,7 +204,6 @@ async def generate_avatar_video(req: AvatarVideoRequest):
     if req.avatar_id in AVATAR_FILES:
         avatar_path = os.path.join(AVATAR_DIR, AVATAR_FILES[req.avatar_id])
     else:
-        # Assume it's a filename returned by /upload-avatar
         avatar_path = os.path.join(AVATAR_DIR, req.avatar_id)
 
     audio_path = os.path.join(AUDIO_DIR, req.audio_filename)
@@ -186,24 +213,26 @@ async def generate_avatar_video(req: AvatarVideoRequest):
     if not os.path.exists(audio_path):
         raise HTTPException(status_code=404, detail=f"Audio file not found: {audio_path}")
 
+    job_id = uuid.uuid4().hex
+
     try:
-        video_bytes = await asyncio.to_thread(_call_sadtalker, avatar_path, audio_path)
+        result_video_path = await asyncio.to_thread(_run_sadtalker_local, avatar_path, audio_path, job_id)
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Avatar video generation failed: {e}")
 
-    filename = f"{uuid.uuid4().hex}.mp4"
-    filepath = os.path.join(VIDEO_DIR, filename)
-    with open(filepath, "wb") as f:
-        f.write(video_bytes)
+    # Copy the result to a flat, predictable filename under video_output/
+    final_filename = f"{job_id}.mp4"
+    final_path = os.path.join(VIDEO_DIR, final_filename)
+    shutil.copy(result_video_path, final_path)
 
-    return AvatarVideoResponse(video_url=f"/video/{filename}")
+    return AvatarVideoResponse(video_url=f"/video/{final_filename}")
 
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "time": datetime.utcnow().isoformat()}
+    return {"status": "ok", "time": datetime.utcnow().isoformat(), "sadtalker_dir_exists": os.path.isdir(SADTALKER_DIR)}
 
 
 # Run with: uvicorn main:app --reload --port 8000
