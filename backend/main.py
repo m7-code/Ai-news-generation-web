@@ -5,6 +5,7 @@ Avatar stage runs SadTalker LOCALLY (no ngrok / Colab) via subprocess, CPU mode.
 """
 
 import os
+import sys
 import glob
 import uuid
 import shutil
@@ -163,7 +164,7 @@ def _run_sadtalker_local(image_path: str, audio_path: str, job_id: str) -> str:
     os.makedirs(result_dir, exist_ok=True)
 
     cmd = [
-        "python", "inference.py",
+        sys.executable, "inference.py",
         "--driven_audio", audio_path,
         "--source_image", image_path,
         "--result_dir", result_dir,

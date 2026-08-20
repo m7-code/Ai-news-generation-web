@@ -29,4 +29,4 @@ export const VIDEOS = [
 ];
 
 export const STAGES = ["SCRIPT", "VOICE", "AVATAR", "RENDER"];
-export const API_BASE = "http://localhost:8000";
+export const API_BASE = "http://localhost:9000";

@@ -159,14 +159,30 @@ export default function App() {
       }
 
       setStageIdx(2); // AVATAR
-      const avatarRes = await fetch(`${API_BASE}/generate-avatar-video`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ avatar_id: avatar, audio_filename: audioFilename }),
-      });
-      if (!avatarRes.ok) throw new Error(`Avatar failed: ${avatarRes.status}`);
-      const avatarData = await avatarRes.json();
-      setTalkingVideoUrl(avatarData.video_url);
+      const AVATAR_TIMEOUT_MS = 90_000; // 90 seconds — adjust as needed
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), AVATAR_TIMEOUT_MS);
+
+      try {
+        const avatarRes = await fetch(`${API_BASE}/generate-avatar-video`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ avatar_id: avatar, audio_filename: audioFilename }),
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+        if (!avatarRes.ok) throw new Error(`Avatar failed: ${avatarRes.status}`);
+        const avatarData = await avatarRes.json();
+        setTalkingVideoUrl(avatarData.video_url);
+      } catch (avatarErr) {
+        clearTimeout(timeoutId);
+        if (avatarErr.name === "AbortError") {
+          console.warn(`Avatar generation exceeded ${AVATAR_TIMEOUT_MS / 1000}s — falling back to audio only.`);
+        } else {
+          console.error("Avatar generation failed:", avatarErr);
+        }
+        // talkingVideoUrl stays null — the audio-only fallback below handles this
+      }
 
       setStageIdx(3); // RENDER
       setGenerating(false);

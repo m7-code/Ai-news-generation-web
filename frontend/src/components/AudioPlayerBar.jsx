@@ -17,26 +17,22 @@ export default function AudioPlayerBar({ audioUrl }) {
   const [duration, setDuration] = useState(0);
 
   useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
+  const audio = audioRef.current;
+  if (!audio) return;
 
-    audio.play().catch(() => {});
-    setIsPlaying(true);
+  const onTimeUpdate = () => setCurrentTime(audio.currentTime);
+  const onLoadedMeta = () => setDuration(audio.duration);
+  const onEnded = () => setIsPlaying(false);
 
-    const onTimeUpdate = () => setCurrentTime(audio.currentTime);
-    const onLoadedMeta = () => setDuration(audio.duration);
-    const onEnded = () => setIsPlaying(false);
-
-    audio.addEventListener("timeupdate", onTimeUpdate);
-    audio.addEventListener("loadedmetadata", onLoadedMeta);
-    audio.addEventListener("ended", onEnded);
-    return () => {
-      audio.removeEventListener("timeupdate", onTimeUpdate);
-      audio.removeEventListener("loadedmetadata", onLoadedMeta);
-      audio.removeEventListener("ended", onEnded);
-    };
-  }, [audioUrl]);
-
+  audio.addEventListener("timeupdate", onTimeUpdate);
+  audio.addEventListener("loadedmetadata", onLoadedMeta);
+  audio.addEventListener("ended", onEnded);
+  return () => {
+    audio.removeEventListener("timeupdate", onTimeUpdate);
+    audio.removeEventListener("loadedmetadata", onLoadedMeta);
+    audio.removeEventListener("ended", onEnded);
+  };
+}, [audioUrl]);
   const togglePlay = () => {
     const audio = audioRef.current;
     if (!audio) return;
