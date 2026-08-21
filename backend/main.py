@@ -200,6 +200,30 @@ def _run_sadtalker_local(image_path: str, audio_path: str, job_id: str) -> str:
     return max(videos, key=os.path.getctime)
 
 
+def _make_web_compatible(input_path: str, output_path: str):
+    """
+    Re-encodes SadTalker's raw output into a browser-playable H.264 mp4.
+    SadTalker's output often uses a codec / pixel format / moov-atom layout
+    that local players (VLC, QuickTime, VS Code) handle fine but browsers
+    refuse to play via <video> tags.
+    """
+    cmd = [
+        "ffmpeg", "-y",
+        "-i", input_path,
+        "-c:v", "libx264",
+        "-pix_fmt", "yuv420p",
+        "-movflags", "+faststart",
+        "-c:a", "aac",
+        output_path,
+    ]
+    proc = subprocess.run(cmd, capture_output=True, text=True)
+    if proc.returncode != 0:
+        raise HTTPException(
+            status_code=500,
+            detail=f"ffmpeg re-encode failed:\n{proc.stderr[-1000:]}",
+        )
+
+
 @app.post("/generate-avatar-video", response_model=AvatarVideoResponse)
 async def generate_avatar_video(req: AvatarVideoRequest):
     if req.avatar_id in AVATAR_FILES:
@@ -223,10 +247,17 @@ async def generate_avatar_video(req: AvatarVideoRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Avatar video generation failed: {e}")
 
-    # Copy the result to a flat, predictable filename under video_output/
+    # Re-encode to a browser-compatible format (SadTalker's raw output
+    # often uses a codec/pixel-format that plays locally but not in browsers)
     final_filename = f"{job_id}.mp4"
     final_path = os.path.join(VIDEO_DIR, final_filename)
-    shutil.copy(result_video_path, final_path)
+
+    try:
+        await asyncio.to_thread(_make_web_compatible, result_video_path, final_path)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Video re-encode failed: {e}")
 
     return AvatarVideoResponse(video_url=f"/video/{final_filename}")
 
