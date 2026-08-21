@@ -173,7 +173,7 @@ export default function App() {
         clearTimeout(timeoutId);
         if (!avatarRes.ok) throw new Error(`Avatar failed: ${avatarRes.status}`);
         const avatarData = await avatarRes.json();
-        setTalkingVideoUrl(avatarData.video_url);
+        setTalkingVideoUrl(`${API_BASE}${avatarData.video_url}`);
       } catch (avatarErr) {
         clearTimeout(timeoutId);
         if (avatarErr.name === "AbortError") {
