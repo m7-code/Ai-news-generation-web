@@ -159,7 +159,7 @@ export default function App() {
       }
 
       setStageIdx(2); // AVATAR
-      const AVATAR_TIMEOUT_MS = 90_000; // 90 seconds — adjust as needed
+      const AVATAR_TIMEOUT_MS = 5000_000; // 5000 seconds — adjust as needed
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), AVATAR_TIMEOUT_MS);
 
