@@ -236,4 +236,4 @@ def health():
     return {"status": "ok", "time": datetime.utcnow().isoformat(), "sadtalker_dir_exists": os.path.isdir(SADTALKER_DIR)}
 
 
-# Run with: uvicorn main:app --reload --port 8000
+# Run with: uvicorn main:app --reload --port 9000
